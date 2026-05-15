@@ -1,0 +1,214 @@
+{
+  "name": "deepseek-inline-copilot",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "deepseek-copilot",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "%configuration.title%",
+      "properties": {
+        "deepseek-inline-copilot.apiKey": {
+          "order": 1,
+          "type": "string",
+          "default": "",
+          "markdownDescription": "%config.apiKey%"
+        },
+        "deepseek-inline-copilot.model": {
+          "order": 2,
+          "type": "string",
+          "default": "deepseek-v4-flash",
+          "markdownDescription": "%config.model%"
+        },
+        "deepseek-inline-copilot.baseUrl": {
+          "order": 3,
+          "type": "string",
+          "default": "https://api.deepseek.com",
+          "description": "%config.baseUrl%"
+        },
+        "deepseek-inline-copilot.enabled": {
+          "order": 11,
+          "type": "boolean",
+          "default": true,
+          "description": "%config.enabled%"
+        },
+        "deepseek-inline-copilot.triggerMode": {
+          "order": 12,
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "manual"],
+          "enumDescriptions": ["%config.triggerMode.auto%", "%config.triggerMode.manual%"],
+          "description": "%config.triggerMode%"
+        },
+        "deepseek-inline-copilot.triggerKey": {
+          "order": 14,
+          "type": "string",
+          "default": "tab",
+          "enum": ["tab", "alt+/"],
+          "enumDescriptions": ["%config.triggerKey.tab%", "%config.triggerKey.altSlash%"],
+          "description": "%config.triggerKey%"
+        },
+        "deepseek-inline-copilot.languageFilters": {
+          "order": 13,
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "%config.languageFilters%"
+        },
+        "deepseek-inline-copilot.debounceMs": {
+          "order": 21,
+          "type": "number",
+          "default": 300,
+          "minimum": 100,
+          "maximum": 2000,
+          "description": "%config.debounceMs%"
+        },
+        "deepseek-inline-copilot.completionCooldownMs": {
+          "order": 22,
+          "type": "number",
+          "default": 7000,
+          "minimum": 1000,
+          "maximum": 30000,
+          "description": "%config.completionCooldownMs%"
+        },
+        "deepseek-inline-copilot.maxPrefixLines": {
+          "order": 31,
+          "type": "number",
+          "default": 60,
+          "minimum": 10,
+          "maximum": 200,
+          "markdownDescription": "%config.maxPrefixLines%"
+        },
+        "deepseek-inline-copilot.maxSuffixLines": {
+          "order": 32,
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 50,
+          "markdownDescription": "%config.maxSuffixLines%"
+        },
+        "deepseek-inline-copilot.textMaxPrefixLines": {
+          "order": 41,
+          "type": "number",
+          "default": 5,
+          "minimum": 3,
+          "maximum": 30,
+          "markdownDescription": "%config.textMaxPrefixLines%"
+        },
+        "deepseek-inline-copilot.textMaxSuffixLines": {
+          "order": 42,
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 20,
+          "markdownDescription": "%config.textMaxSuffixLines%"
+        },
+        "deepseek-inline-copilot.maxTokens": {
+          "order": 51,
+          "type": "number",
+          "default": 256,
+          "minimum": 16,
+          "maximum": 4096,
+          "markdownDescription": "%config.maxTokens%"
+        },
+        "deepseek-inline-copilot.reviewMaxTokens": {
+          "order": 52,
+          "type": "number",
+          "default": 256,
+          "minimum": 64,
+          "maximum": 2048,
+          "markdownDescription": "%config.reviewMaxTokens%"
+        },
+        "deepseek-inline-copilot.temperature": {
+          "order": 53,
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "%config.temperature%"
+        },
+        "deepseek-inline-copilot.errorCheck": {
+          "order": 61,
+          "type": "boolean",
+          "default": true,
+          "description": "%config.errorCheck%"
+        },
+        "deepseek-inline-copilot.errorCheckDebounceMs": {
+          "order": 62,
+          "type": "number",
+          "default": 1500,
+          "minimum": 500,
+          "maximum": 5000,
+          "description": "%config.errorCheckDebounceMs%"
+        },
+        "deepseek-inline-copilot.errorCheckMaxLines": {
+          "order": 63,
+          "type": "number",
+          "default": 10,
+          "minimum": 5,
+          "maximum": 100,
+          "markdownDescription": "%config.errorCheckMaxLines%"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "deepseek-inline-copilot.toggle",
+        "title": "%command.toggle%"
+      },
+      {
+        "command": "deepseek-inline-copilot.triggerSuggestion",
+        "title": "%command.triggerSuggestion%"
+      },
+      {
+        "command": "deepseek-inline-copilot.reviewDocument",
+        "title": "%command.reviewDocument%"
+      },
+      {
+        "command": "deepseek-inline-copilot.clearErrors",
+        "title": "%command.clearErrors%"
+      },
+      {
+        "command": "deepseek-inline-copilot.openSettings",
+        "title": "%command.openSettings%"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "deepseek-inline-copilot.triggerSuggestion",
+        "key": "tab",
+        "when": "editorTextFocus && !editorReadonly && !inlineSuggestionVisible && !suggestWidgetVisible"
+      },
+      {
+        "command": "deepseek-inline-copilot.triggerSuggestion",
+        "key": "alt+/",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "install:vsce": "npm install -g @vscode/vsce"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.82.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
