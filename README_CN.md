@@ -1,6 +1,10 @@
 # DeepSeek Inline Copilot
 
-基于 **DeepSeek V4 Flash** API 的 VS Code 内联代码补全扩展。类似 GitHub Copilot，但你可以完全控制上下文长度、Token 预算和触发方式。
+> VS Code 内联代码补全扩展 · 基于 DeepSeek V4 Flash · 可配置上下文与 Token 预算 · 实时错误检测
+>
+> Inline code completion for VS Code · Powered by DeepSeek V4 Flash · Configurable context & token budget · Real-time error checking
+
+[📖 English Docs](README.md)
 
 ## ✨ 功能
 

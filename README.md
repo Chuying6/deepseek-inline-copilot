@@ -1,6 +1,10 @@
 # DeepSeek Inline Copilot
 
-AI-powered inline code completions for VS Code, using the **DeepSeek V4 Flash** API. Like GitHub Copilot's inline suggestions, but with full control over context, token budget, and trigger behavior.
+> VS Code 内联代码补全扩展 · 基于 DeepSeek V4 Flash · 可配置上下文与 Token 预算 · 实时错误检测
+>
+> Inline code completion for VS Code · Powered by DeepSeek V4 Flash · Configurable context & token budget · Real-time error checking
+
+[📖 中文文档](README_CN.md)
 
 ## ✨ Features
 
