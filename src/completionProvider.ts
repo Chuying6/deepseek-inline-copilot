@@ -8,10 +8,12 @@
 import * as vscode from 'vscode';
 import { DeepSeekClient, CompletionResult } from './deepseekClient';
 import { ContextAnalyzer, CompletionContext } from './contextAnalyzer';
+import { UsageTracker } from './usageTracker';
 
 export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemProvider {
   private readonly client: DeepSeekClient;
   private readonly contextAnalyzer: ContextAnalyzer;
+  private readonly usageTracker: UsageTracker;
   private readonly debounceMs: number;
 
   // Track the latest request to avoid race conditions
@@ -36,10 +38,12 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
   constructor(
     client: DeepSeekClient,
     contextAnalyzer: ContextAnalyzer,
+    usageTracker: UsageTracker,
     debounceMs: number = 300
   ) {
     this.client = client;
     this.contextAnalyzer = contextAnalyzer;
+    this.usageTracker = usageTracker;
     this.debounceMs = debounceMs;
 
     // Create status bar item (right-aligned)
@@ -118,12 +122,19 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         }
 
         try {
+          // Check daily budget quota
+          if (this.usageTracker.isQuotaExceeded()) {
+            this.updateStatusBar(false, false);
+            resolve([]);
+            return;
+          }
+
           this.updateStatusBar(true);
 
-          // Extract context (prefix and suffix)
+          // Extract context (prefix, suffix, imports, symbols, file path)
           const completionContext = this.contextAnalyzer.extractContext(document, position);
 
-          // Call DeepSeek API
+          // Call DeepSeek API with enhanced context
           const result = await this.client.complete(
             completionContext.prefix,
             completionContext.suffix,
@@ -166,11 +177,17 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
           // Record completion time for cooldown (per-document)
           this.lastCompletionTimes.set(document.uri.toString(), Date.now());
 
-          // Log usage for debugging
+          // Track usage for daily quota
           if (result.usage) {
+            this.usageTracker.recordUsage(
+              result.model,
+              result.usage.promptTokens,
+              result.usage.completionTokens
+            );
             console.log(
               `[DeepSeek Copilot] Tokens: ${result.usage.totalTokens} ` +
-              `(prompt: ${result.usage.promptTokens}, completion: ${result.usage.completionTokens})`
+              `(prompt: ${result.usage.promptTokens}, completion: ${result.usage.completionTokens}) ` +
+              `| Cost today: $${this.usageTracker.getCurrentUsage().costUsd.toFixed(4)}`
             );
           }
 
@@ -259,14 +276,42 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
 
   /**
    * Build extra context string for the chat fallback.
+   * Includes file metadata, imported modules, nearby symbols,
+   * and special context state for higher-quality completions.
    */
   private buildExtraContext(context: CompletionContext): string {
     const parts: string[] = [];
+
+    // File identity
+    parts.push(`File: ${context.filePath}`);
     parts.push(`Language: ${context.languageId}`);
+
+    // Special context state (comment, string, math mode, etc.)
     if (context.inContext) {
-      parts.push(`Current context: ${context.inContext}`);
+      const contextHints: Record<string, string> = {
+        'comment': 'You are inside a comment — complete it naturally, do NOT generate code',
+        'string': 'You are inside a string literal — complete the string content',
+        'math': 'You are in LaTeX math mode — use appropriate math notation',
+      };
+      const hint = contextHints[context.inContext];
+      if (hint) {
+        parts.push(`⚠️ ${hint}`);
+      } else {
+        parts.push(`Current context: ${context.inContext}`);
+      }
     }
-    return parts.join('. ');
+
+    // Import context (helps model use the right libraries)
+    if (context.imports) {
+      parts.push(`Imported modules/packages:\n${context.imports}`);
+    }
+
+    // Nearby symbols (helps model understand code structure)
+    if (context.nearbySymbols) {
+      parts.push(`Nearby declarations:\n${context.nearbySymbols}`);
+    }
+
+    return parts.join('\n');
   }
 
   /**

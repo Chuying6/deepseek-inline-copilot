@@ -16,6 +16,12 @@ export interface CompletionContext {
   languageId: string;
   /** Whether we are inside a special context (math mode, string, comment, etc.) */
   inContext: string | null;
+  /** Relative file path (for context hints) */
+  filePath: string;
+  /** Extracted imports / includes from the file (for context) */
+  imports: string;
+  /** Nearby function/class signatures (for context) */
+  nearbySymbols: string;
 }
 
 export class ContextAnalyzer {
@@ -58,6 +64,7 @@ export class ContextAnalyzer {
   /**
    * Extract prefix and suffix text around the cursor position.
    * Uses different context window sizes for text vs code files.
+   * Also extracts metadata like imports and nearby symbols.
    */
   extractContext(
     document: vscode.TextDocument,
@@ -103,7 +110,12 @@ export class ContextAnalyzer {
       suffix = enhanced.suffix;
     }
 
-    return { prefix, suffix, languageId, inContext };
+    // Extract file-level metadata for better completion hit rate
+    const filePath = this.extractRelativePath(document);
+    const imports = isText ? '' : this.extractImports(document, languageId);
+    const nearbySymbols = isText ? '' : this.extractNearbySymbols(document, position, languageId);
+
+    return { prefix, suffix, languageId, inContext, filePath, imports, nearbySymbols };
   }
 
   /**
@@ -271,5 +283,129 @@ export class ContextAnalyzer {
     }
 
     return { prefix, suffix };
+  }
+
+  /**
+   * Extract a relative file path for context hints.
+   * e.g., "src/utils/helpers.ts" helps the model understand the file's role.
+   */
+  private extractRelativePath(document: vscode.TextDocument): string {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (workspaceFolder) {
+      const root = workspaceFolder.uri.fsPath;
+      const file = document.uri.fsPath;
+      if (file.startsWith(root)) {
+        return file.substring(root.length + 1); // +1 for the trailing slash
+      }
+    }
+    return document.fileName;
+  }
+
+  /**
+   * Extract import/include statements from the document for context.
+   * Knowing which libraries/modules are imported helps the model
+   * suggest completions that use the right APIs.
+   */
+  private extractImports(
+    document: vscode.TextDocument,
+    languageId: string
+  ): string {
+    const importPatterns: Record<string, RegExp> = {
+      'python': /^(?:import\s+\w|from\s+\w)/,
+      'javascript': /^(?:import\s+|const\s+\w+\s*=\s*require\()/,
+      'typescript': /^(?:import\s+|const\s+\w+\s*=\s*require\()/,
+      'typescriptreact': /^(?:import\s+|const\s+\w+\s*=\s*require\()/,
+      'javascriptreact': /^(?:import\s+|const\s+\w+\s*=\s*require\()/,
+      'java': /^import\s+/,
+      'go': /^import\s*(?:\(|")/,
+      'rust': /^use\s+/,
+      'cpp': /^#include/,
+      'c': /^#include/,
+      'csharp': /^using\s+/,
+      'r': /^library\(|^require\(|^source\(/,
+      'ruby': /^require\s+|^include\s+/,
+      'php': /^use\s+|^require/,
+      'swift': /^import\s+/,
+      'kotlin': /^import\s+/,
+      'scala': /^import\s+/,
+      'haskell': /^import\s+/,
+      'julia': /^using\s+|^import\s+/,
+      'dart': /^import\s+/,
+    };
+
+    const pattern = importPatterns[languageId];
+    if (!pattern) {
+      return '';
+    }
+
+    const lines: string[] = [];
+    const maxLines = Math.min(document.lineCount, 100); // Only scan top of file
+    for (let i = 0; i < maxLines; i++) {
+      const line = document.lineAt(i).text.trim();
+      if (pattern.test(line)) {
+        lines.push(line);
+      } else if (lines.length > 0 && line.length > 0) {
+        // Stop after the import block ends (blank line)
+        break;
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Extract nearby function/class/method signatures for context.
+   * This helps the model understand the surrounding code structure
+   * and suggest more relevant completions.
+   */
+  private extractNearbySymbols(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    languageId: string
+  ): string {
+    const symbolPatterns: Record<string, RegExp> = {
+      'python': /^\s*(?:def|class|async\s+def)\s+\w+/,
+      'javascript': /^\s*(?:function|class|const\s+\w+\s*=\s*(?:\(.*\)\s*=>|async\s*\(.*\)\s*=>|function))/,
+      'typescript': /^\s*(?:function|class|interface|type|const\s+\w+\s*=\s*(?:\(.*\)\s*=>|async\s*\(.*\)\s*=>|function))/,
+      'typescriptreact': /^\s*(?:function|class|interface|type|const\s+\w+\s*=\s*(?:\(.*\)\s*=>|async\s*\(.*\)\s*=>|function))/,
+      'javascriptreact': /^\s*(?:function|class|const\s+\w+\s*=\s*(?:\(.*\)\s*=>|async\s*\(.*\)\s*=>|function))/,
+      'java': /^\s*(?:public|private|protected|static|class|interface|void|\w+\s+\w+\s*\()/,
+      'go': /^\s*(?:func|type)\s+/,
+      'rust': /^\s*(?:fn|struct|impl|trait|enum|mod)\s+/,
+      'cpp': /^\s*(?:void|int|bool|string|auto|class|struct|template)\s+\w+\s*\(/,
+      'c': /^\s*(?:void|int|char|float|double|struct|static)\s+\w+\s*\(/,
+      'csharp': /^\s*(?:public|private|protected|internal|static|class|interface|void|Task|async)\s/,
+      'swift': /^\s*(?:func|class|struct|enum|protocol|extension)\s+/,
+      'kotlin': /^\s*(?:fun|class|object|interface|data\s+class)\s+/,
+      'ruby': /^\s*(?:def|class|module)\s+/,
+      'php': /^\s*(?:function|class|public\s+function|protected\s+function|private\s+function)/,
+      'r': /^\s*\w+\s*(?:<-|=)\s*function\s*\(/,
+      'scala': /^\s*(?:def|class|object|trait)\s+/,
+      'haskell': /^\s*\w+\s*::/,
+      'dart': /^\s*(?:class|void|Future|Widget|final)\s+\w+/,
+      'julia': /^\s*(?:function|struct|mutable\s+struct|macro)\s+/,
+    };
+
+    const pattern = symbolPatterns[languageId];
+    if (!pattern) {
+      return '';
+    }
+
+    const results: string[] = [];
+    const searchRange = 30; // lines above/below
+    const startLine = Math.max(0, position.line - searchRange);
+    const endLine = Math.min(document.lineCount - 1, position.line + searchRange);
+
+    for (let i = startLine; i <= endLine; i++) {
+      if (i === position.line) {
+        continue; // Skip the current line (part of prefix/suffix)
+      }
+      const line = document.lineAt(i).text;
+      if (pattern.test(line)) {
+        results.push(line.trim());
+      }
+    }
+
+    return results.slice(0, 5).join('\n'); // Limit to 5 symbols
   }
 }

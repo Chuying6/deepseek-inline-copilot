@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "deepseek-copilot",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/deepseek-inline-copilot"
+  },
   "engines": {
     "vscode": "^1.82.0"
   },
@@ -139,6 +143,26 @@
           "maximum": 2,
           "description": "%config.temperature%"
         },
+        "deepseek-inline-copilot.dailyBudgetUsd": {
+          "order": 55,
+          "type": "number",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 100,
+          "markdownDescription": "%config.dailyBudgetUsd%"
+        },
+        "deepseek-inline-copilot.inputPricePer1M": {
+          "order": 56,
+          "type": "number",
+          "default": 0,
+          "markdownDescription": "%config.inputPricePer1M%"
+        },
+        "deepseek-inline-copilot.outputPricePer1M": {
+          "order": 57,
+          "type": "number",
+          "default": 0,
+          "markdownDescription": "%config.outputPricePer1M%"
+        },
         "deepseek-inline-copilot.errorCheck": {
           "order": 61,
           "type": "boolean",
@@ -183,6 +207,10 @@
       {
         "command": "deepseek-inline-copilot.openSettings",
         "title": "%command.openSettings%"
+      },
+      {
+        "command": "deepseek-inline-copilot.showUsage",
+        "title": "%command.showUsage%"
       }
     ],
     "keybindings": [

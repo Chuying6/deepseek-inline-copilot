@@ -10,9 +10,11 @@ import { DeepSeekClient } from './deepseekClient';
 import { ContextAnalyzer } from './contextAnalyzer';
 import { DeepSeekCompletionProvider } from './completionProvider';
 import { DiagnosticsProvider } from './diagnosticsProvider';
+import { UsageTracker } from './usageTracker';
 
 let provider: DeepSeekCompletionProvider | undefined;
 let diagnosticsProvider: DiagnosticsProvider | undefined;
+let usageTracker: UsageTracker | undefined;
 let registration: vscode.Disposable | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -43,10 +45,15 @@ export function activate(context: vscode.ExtensionContext) {
   // Create the context analyzer (reads config at runtime)
   const contextAnalyzer = new ContextAnalyzer();
 
+  // Create the usage tracker (daily budget & cost tracking)
+  usageTracker = new UsageTracker(context);
+  context.subscriptions.push(usageTracker);
+
   // Create the completion provider
   provider = new DeepSeekCompletionProvider(
     client,
     contextAnalyzer,
+    usageTracker,
     config.get<number>('debounceMs', 300)
   );
 
@@ -117,6 +124,41 @@ export function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(clearErrorsCmd);
 
+  // Register: show usage statistics
+  const showUsageCmd = vscode.commands.registerCommand(
+    'deepseek-inline-copilot.showUsage',
+    () => {
+      if (!usageTracker) {
+        vscode.window.showInformationMessage('DeepSeek Copilot: Usage tracker not available.');
+        return;
+      }
+      const usage = usageTracker.getCurrentUsage();
+      const budget = vscode.workspace.getConfiguration('deepseek-inline-copilot')
+        .get<number>('dailyBudgetUsd', 0.50);
+      const remaining = usageTracker.getRemainingBudget();
+
+      const message = [
+        `📊 DeepSeek Copilot — Today's Usage (${usage.date})`,
+        `─────────────────────────────`,
+        `💰 Cost:        $${usage.costUsd.toFixed(4)}`,
+        budget > 0
+          ? `📥 Budget:      $${budget.toFixed(2)} (${remaining === Infinity ? 'unlimited' : '$' + remaining.toFixed(4) + ' remaining'})`
+          : `📥 Budget:      unlimited`,
+        `🔢 Requests:    ${usage.requestCount}`,
+        `📝 Input tokens:  ${usage.inputTokens.toLocaleString()}`,
+        `📤 Output tokens: ${usage.outputTokens.toLocaleString()}`,
+        `📊 Total tokens:  ${(usage.inputTokens + usage.outputTokens).toLocaleString()}`,
+      ].join('\n');
+
+      vscode.window.showInformationMessage(
+        message,
+        { modal: true },
+        'OK'
+      );
+    }
+  );
+  context.subscriptions.push(showUsageCmd);
+
   // Register: open settings (via status bar click)
   const openSettingsCmd = vscode.commands.registerCommand(
     'deepseek-inline-copilot.openSettings',
@@ -169,6 +211,11 @@ export function deactivate() {
   if (provider) {
     provider.dispose();
     provider = undefined;
+  }
+
+  if (usageTracker) {
+    usageTracker.dispose();
+    usageTracker = undefined;
   }
 
   if (registration) {

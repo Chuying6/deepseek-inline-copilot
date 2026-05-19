@@ -23,6 +23,9 @@
   "config.maxTokens": "每次补全最大输出 Token 数。256 tokens 约 $0.00007（v4-flash 输出 $0.28/百万）。4096 ≈ $0.0011",
   "config.reviewMaxTokens": "纠错检查最大输出 Token 数。256 tokens 约 $0.00007",
   "config.temperature": "生成温度。0 = 确定性（推荐用于代码）",
+  "config.dailyBudgetUsd": "每日预算上限（美元）。0 = 无限制。超出后补全将被阻止直到第二天。默认：$0.50/天。DeepSeek v4-flash：输入约 $0.14/百万 tokens，输出约 $0.28/百万 tokens。",
+  "config.inputPricePer1M": "自定义输入价格（美元/百万 tokens）。设为 0 则使用已知模型的内置定价。使用自定义模型或代理时可覆盖。",
+  "config.outputPricePer1M": "自定义输出价格（美元/百万 tokens）。设为 0 则使用已知模型的内置定价。使用自定义模型或代理时可覆盖。",
   "config.errorCheck": "启用实时错误检查和修复建议",
   "config.errorCheckDebounceMs": "运行错误检查前的暂停时间（毫秒）。越大 API 调用越少",
   "config.errorCheckMaxLines": "检查光标周围错误的行数。10 行 ≈ 约 150 输入 tokens（约 $0.00002）。越大检查范围越广",
@@ -31,5 +34,6 @@
   "command.triggerSuggestion": "DeepSeek Copilot：触发内联建议",
   "command.reviewDocument": "DeepSeek Copilot：审查文档错误",
   "command.clearErrors": "DeepSeek Copilot：清除所有错误",
-  "command.openSettings": "DeepSeek Copilot：打开设置"
+  "command.openSettings": "DeepSeek Copilot：打开设置",
+  "command.showUsage": "DeepSeek Copilot：显示今日用量与费用"
 }
