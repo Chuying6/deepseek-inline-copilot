@@ -10,7 +10,7 @@ import { DeepSeekClient } from './deepseekClient';
 import { ContextAnalyzer } from './contextAnalyzer';
 import { DeepSeekCompletionProvider } from './completionProvider';
 import { DiagnosticsProvider } from './diagnosticsProvider';
-import { UsageTracker } from './usageTracker';
+import { UsageTracker, formatCost } from './usageTracker';
 
 let provider: DeepSeekCompletionProvider | undefined;
 let diagnosticsProvider: DiagnosticsProvider | undefined;
@@ -132,6 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('DeepSeek Copilot: Usage tracker not available.');
         return;
       }
+      usageTracker.updateStatusBar();
       const usage = usageTracker.getCurrentUsage();
       const budget = vscode.workspace.getConfiguration('deepseek-inline-copilot')
         .get<number>('dailyBudgetUsd', 0.50);
@@ -140,9 +141,9 @@ export function activate(context: vscode.ExtensionContext) {
       const message = [
         `📊 DeepSeek Copilot — Today's Usage (${usage.date})`,
         `─────────────────────────────`,
-        `💰 Cost:        $${usage.costUsd.toFixed(4)}`,
+        `💰 Cost:        $${formatCost(usage.costUsd)}`,
         budget > 0
-          ? `📥 Budget:      $${budget.toFixed(2)} (${remaining === Infinity ? 'unlimited' : '$' + remaining.toFixed(4) + ' remaining'})`
+          ? `📥 Budget:      $${budget.toFixed(2)} (${remaining === Infinity ? 'unlimited' : '$' + formatCost(remaining) + ' remaining'})`
           : `📥 Budget:      unlimited`,
         `🔢 Requests:    ${usage.requestCount}`,
         `📝 Input tokens:  ${usage.inputTokens.toLocaleString()}`,

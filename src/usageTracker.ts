@@ -45,6 +45,23 @@ interface DailyUsage {
   requestCount: number;
 }
 
+/** Format a USD cost value with adaptive precision — shows meaningful digits even for tiny costs. */
+export function formatCost(cost: number): string {
+  if (cost === 0) return '0.00';
+  const abs = Math.abs(cost);
+  const precision = abs < 0.001 ? 6 : abs < 0.01 ? 5 : abs < 1 ? 4 : 3;
+  let formatted = cost.toFixed(precision);
+  // Strip trailing zeros after decimal, keep at least 2 decimals
+  if (formatted.includes('.')) {
+    formatted = formatted.replace(/(\.\d*?)0+$/, '$1');
+    if (formatted.endsWith('.')) formatted = formatted.slice(0, -1);
+    const parts = formatted.split('.');
+    if (parts.length === 1) formatted += '.00';
+    else if (parts[1].length === 1) formatted += '0';
+  }
+  return formatted;
+}
+
 export class UsageTracker {
   private readonly context: vscode.ExtensionContext;
   private currentUsage: DailyUsage;
@@ -141,7 +158,7 @@ export class UsageTracker {
     const budget = this.getDailyBudget();
     const remaining = this.getRemainingBudget();
 
-    let summary = `DeepSeek: $${this.currentUsage.costUsd.toFixed(4)}`;
+    let summary = `DeepSeek: $${formatCost(this.currentUsage.costUsd)}`;
     if (budget > 0) {
       summary += ` / $${budget.toFixed(2)}`;
       if (remaining <= 0) {
@@ -201,6 +218,7 @@ export class UsageTracker {
       this.currentUsage = this.createEmptyUsage();
       this.quotaExceededNotified = false;
       this.quotaWarningNotified = false;
+      this.updateStatusBar();
     }
   }
 
@@ -261,26 +279,26 @@ export class UsageTracker {
     return config.get<number>('dailyBudgetUsd', 0.50);
   }
 
-  private updateStatusBar(): void {
+  public updateStatusBar(): void {
     const budget = this.getDailyBudget();
     const remaining = this.getRemainingBudget();
 
     if (budget <= 0) {
       // Unlimited budget
-      this.statusBarItem.text = `$(dashboard) DeepSeek: $${this.currentUsage.costUsd.toFixed(4)}`;
-      this.statusBarItem.tooltip = `Usage today: $${this.currentUsage.costUsd.toFixed(4)} | ${this.currentUsage.requestCount} requests | Budget: unlimited`;
+      this.statusBarItem.text = `$(dashboard) DeepSeek: $${formatCost(this.currentUsage.costUsd)}`;
+      this.statusBarItem.tooltip = `Usage today: $${formatCost(this.currentUsage.costUsd)} | ${this.currentUsage.requestCount} requests | Budget: unlimited`;
       this.statusBarItem.backgroundColor = undefined;
     } else if (remaining <= 0) {
       this.statusBarItem.text = `$(circle-slash) DeepSeek: limit reached`;
-      this.statusBarItem.tooltip = `Daily budget exhausted: $${this.currentUsage.costUsd.toFixed(4)} / $${budget.toFixed(2)} | Click to adjust settings`;
+      this.statusBarItem.tooltip = `Daily budget exhausted: $${formatCost(this.currentUsage.costUsd)} / $${budget.toFixed(2)} | Click to adjust settings`;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
     } else if (remaining < budget * 0.2) {
-      this.statusBarItem.text = `$(warning) DeepSeek: $${this.currentUsage.costUsd.toFixed(3)} / $${budget.toFixed(2)}`;
-      this.statusBarItem.tooltip = `Approaching daily limit! $${remaining.toFixed(3)} remaining | ${this.currentUsage.requestCount} requests today`;
+      this.statusBarItem.text = `$(warning) DeepSeek: $${formatCost(this.currentUsage.costUsd)} / $${budget.toFixed(2)}`;
+      this.statusBarItem.tooltip = `Approaching daily limit! $${formatCost(remaining)} remaining | ${this.currentUsage.requestCount} requests today`;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     } else {
-      this.statusBarItem.text = `$(dashboard) DeepSeek: $${this.currentUsage.costUsd.toFixed(3)} / $${budget.toFixed(2)}`;
-      this.statusBarItem.tooltip = `Daily usage: $${this.currentUsage.costUsd.toFixed(4)} of $${budget.toFixed(2)} | ${this.currentUsage.requestCount} requests today | Click to adjust budget`;
+      this.statusBarItem.text = `$(dashboard) DeepSeek: $${formatCost(this.currentUsage.costUsd)} / $${budget.toFixed(2)}`;
+      this.statusBarItem.tooltip = `Daily usage: $${formatCost(this.currentUsage.costUsd)} of $${budget.toFixed(2)} | ${this.currentUsage.requestCount} requests today | Click to adjust budget`;
       this.statusBarItem.backgroundColor = undefined;
     }
   }
@@ -295,14 +313,14 @@ export class UsageTracker {
     }
 
     const remaining = this.getRemainingBudget();
-    const costStr = `$${this.currentUsage.costUsd.toFixed(3)} of $${budget.toFixed(2)}`;
+    const costStr = `$${formatCost(this.currentUsage.costUsd)} of $${budget.toFixed(2)}`;
 
     // Warning at 80%
     if (!this.quotaWarningNotified && remaining <= budget * 0.2 && remaining > 0) {
       this.quotaWarningNotified = true;
       vscode.window.showWarningMessage(
         `⚠️ DeepSeek Copilot: Approaching daily budget limit (${costStr}). ` +
-        `Only $${remaining.toFixed(3)} remaining. Consider increasing the budget in settings.`,
+        `Only $${formatCost(remaining)} remaining. Consider increasing the budget in settings.`,
         'Open Settings',
         'Dismiss'
       ).then(choice => {

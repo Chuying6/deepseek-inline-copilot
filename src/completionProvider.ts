@@ -125,6 +125,7 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
           // Check daily budget quota
           if (this.usageTracker.isQuotaExceeded()) {
             this.updateStatusBar(false, false);
+            this.usageTracker.updateStatusBar();
             resolve([]);
             return;
           }
